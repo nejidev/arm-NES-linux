@@ -73,9 +73,6 @@ static int lcd_fb_display_px(WORD color, int x, int y)
 {
 	unsigned char  *pen8;
 	unsigned short *pen16;
-	//从缩放表中取出对应的颜色值
-	x = zoom_x_tab[x];
-	y = zoom_y_tab[y];
 	pen8 = (unsigned char *)(fb_mem + y*line_width + x*px_width);
 	pen16 = (unsigned short *)pen8;
 	*pen16 = color;
@@ -125,25 +122,25 @@ static int lcd_fb_init()
 int make_zoom_tab()
 {
 	int i;
-	zoom_x_tab = (int *)malloc(sizeof(int) * NES_DISP_WIDTH);
+	zoom_x_tab = (int *)malloc(sizeof(int) * lcd_width);
 	if(NULL == zoom_x_tab)
 	{
 		printf("make zoom_x_tab error\n");
 		return -1;
 	}
-	for(i=0; i<NES_DISP_WIDTH; i++)
+	for(i=0; i<lcd_width; i++)
 	{
-		zoom_x_tab[i] = i*lcd_width/NES_DISP_WIDTH;
+		zoom_x_tab[i] = (i+0.4999999)*NES_DISP_WIDTH/lcd_width-0.5;
 	}
-	zoom_y_tab = (int *)malloc(sizeof(int) * NES_DISP_HEIGHT);
+	zoom_y_tab = (int *)malloc(sizeof(int) * lcd_height);
 	if(NULL == zoom_y_tab)
 	{
 		printf("make zoom_y_tab error\n");
 		return -1;
 	}
-	for(i=0; i<NES_DISP_HEIGHT; i++)
+	for(i=0; i<lcd_height; i++)
 	{
-		zoom_y_tab[i] = i*lcd_height/NES_DISP_HEIGHT;
+		zoom_y_tab[i] = (i+0.4999999)*NES_DISP_HEIGHT/lcd_height-0.5;
 	}
 	return 1;
 }
@@ -669,6 +666,7 @@ void *InfoNES_MemorySet( void *dest, int c, int count )
 /*===================================================================*/
 void InfoNES_LoadFrame()
 {
+	#if 0
 	int x,y;
 	WORD wColor;
 	for (y = 0; y < NES_DISP_HEIGHT; y++ )
@@ -679,6 +677,18 @@ void InfoNES_LoadFrame()
 			lcd_fb_display_px(wColor, x, y);
 		}
 	}
+	#else
+	int x,y;
+	WORD wColor;
+	for (y = 0; y < lcd_height; y++ )
+	{
+		for (x = 0; x < lcd_width; x++ )
+		{
+			wColor = WorkFrame[zoom_y_tab[y] * NES_DISP_WIDTH  + zoom_x_tab[x]];
+			lcd_fb_display_px(wColor, x, y);
+		}
+	}
+	#endif
 }
 
 
