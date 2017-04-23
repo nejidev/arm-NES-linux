@@ -51,7 +51,12 @@ static unsigned char *fb_mem;
 static int px_width;
 static int line_width;
 static int screen_width;
+static int lcd_width;
+static int lcd_height;
 static struct fb_var_screeninfo var;
+
+static int *zoom_x_tab;
+static int *zoom_y_tab;
 
 static int init_joypad()
 {
@@ -68,7 +73,9 @@ static int lcd_fb_display_px(WORD color, int x, int y)
 {
 	unsigned char  *pen8;
 	unsigned short *pen16;
-	
+	//从缩放表中取出对应的颜色值
+	x = zoom_x_tab[x];
+	y = zoom_y_tab[y];
 	pen8 = (unsigned char *)(fb_mem + y*line_width + x*px_width);
 	pen16 = (unsigned short *)pen8;
 	*pen16 = color;
@@ -94,9 +101,11 @@ static int lcd_fb_init()
 	}
 	
 	//计算参数
-	px_width = var.bits_per_pixel / 8;
-	line_width = var.xres * px_width;
+	px_width     = var.bits_per_pixel / 8;
+	line_width   = var.xres * px_width;
 	screen_width = var.yres * line_width;
+	lcd_width    = var.xres;
+	lcd_height   = var.yres;
 	
 	fb_mem = (unsigned char *)mmap(NULL, screen_width, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, 0);
 	if(fb_mem == (void *)-1)
@@ -108,6 +117,35 @@ static int lcd_fb_init()
 	//清屏
 	memset(fb_mem, 0 , screen_width);
 	return 0;
+}
+
+/**
+ * 生成zoom 缩放表
+ */
+int make_zoom_tab()
+{
+	int i;
+	zoom_x_tab = (int *)malloc(sizeof(int) * NES_DISP_WIDTH);
+	if(NULL == zoom_x_tab)
+	{
+		printf("make zoom_x_tab error\n");
+		return -1;
+	}
+	for(i=0; i<NES_DISP_WIDTH; i++)
+	{
+		zoom_x_tab[i] = i*lcd_width/NES_DISP_WIDTH;
+	}
+	zoom_y_tab = (int *)malloc(sizeof(int) * NES_DISP_HEIGHT);
+	if(NULL == zoom_y_tab)
+	{
+		printf("make zoom_y_tab error\n");
+		return -1;
+	}
+	for(i=0; i<NES_DISP_HEIGHT; i++)
+	{
+		zoom_y_tab[i] = i*lcd_height/NES_DISP_HEIGHT;
+	}
+	return 1;
 }
 
 /*-------------------------------------------------------------------*/
@@ -209,11 +247,16 @@ int main( int argc, char **argv )
 	
 	lcd_fb_init();
 	init_joypad();
+	//初始化 zoom 缩放表
+	make_zoom_tab();
 	
 	//主循环中处理输入事件
 	while(1)
-	{		
-		dwKeyPad1 = read(joypad_fd, 0, 0);
+	{	
+		if(0 < joypad_fd)
+		{
+			dwKeyPad1 = read(joypad_fd, 0, 0);
+		}
 	}
 	return(0);
 }
