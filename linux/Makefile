@@ -16,7 +16,7 @@ LDFILGS = -lstdc++		# gcc3.x.x
 all: InfoNES
 
 InfoNES: $(.OFILES)
-	$(CC) $(INCLUDES) -o $@ $(.OFILES) $(LDFILGS) -lm -lz -lpthread
+	$(CC) $(INCLUDES) -o $@ $(.OFILES) $(LDFILGS) -lm -lz -lpthread -lasound
 
 .cpp.o:
 	$(CC) $(INCLUDES) -c $(CCFLAGS) $*.cpp  -o $@

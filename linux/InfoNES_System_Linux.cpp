@@ -20,7 +20,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <sys/soundcard.h>
+#include <alsa/asoundlib.h>
 
 #include "../InfoNES.h"
 #include "../InfoNES_System.h"
@@ -44,6 +44,9 @@
 #include <fcntl.h>
 
 #define JOYPAD_DEV "/dev/joypad"
+
+static snd_pcm_t *playback_handle;
+
 static int joypad_fd;
 
 static int fb_fd;
@@ -57,6 +60,58 @@ static struct fb_var_screeninfo var;
 
 static int *zoom_x_tab;
 static int *zoom_y_tab;
+
+//声卡环形缓冲区 2M 大小 应该足够了
+#define SOUND_BUF_SIZE (1024*1024*16) // 16K
+static int sound_buf_size  = SOUND_BUF_SIZE;
+static int sound_pos_w = 0;
+static int sound_pos_r = 0;
+static unsigned char sound_buf[SOUND_BUF_SIZE];
+static int sounc_samples_per_sync;
+
+//缓存是否为空
+static int sound_cache_is_empty()
+{
+	return (sound_pos_w == sound_pos_r);
+}
+
+//缓存是否已满
+static int sound_cache_is_full()
+{
+	return ((sound_pos_w + 1)% SOUND_BUF_SIZE) == sound_pos_r;
+}
+
+//从缓存中取出
+static int sound_cache_get(unsigned char *pcVal)
+{
+	if(sound_cache_is_empty())
+	{
+		return -1;
+	}
+	*pcVal = sound_buf[sound_pos_r];
+	sound_pos_r++;
+	if(SOUND_BUF_SIZE == sound_pos_r)
+	{
+		sound_pos_r = 0;
+	}
+	return 0;
+}
+
+//写入缓存
+static int sound_cache_put(unsigned char val)
+{
+	if(sound_cache_is_full())
+	{
+		return -1;
+	}
+	sound_buf[sound_pos_w] = val;
+	sound_pos_w++;
+	if(SOUND_BUF_SIZE == sound_pos_w)
+	{
+		sound_pos_w = 0;
+	}
+	return 0;
+}
 
 static int init_joypad()
 {
@@ -130,7 +185,7 @@ int make_zoom_tab()
 	}
 	for(i=0; i<lcd_width; i++)
 	{
-		zoom_x_tab[i] = (i+0.4999999)*NES_DISP_WIDTH/lcd_width-0.5;
+		zoom_x_tab[i] = i*NES_DISP_WIDTH/lcd_width;
 	}
 	zoom_y_tab = (int *)malloc(sizeof(int) * lcd_height);
 	if(NULL == zoom_y_tab)
@@ -140,7 +195,7 @@ int make_zoom_tab()
 	}
 	for(i=0; i<lcd_height; i++)
 	{
-		zoom_y_tab[i] = (i+0.4999999)*NES_DISP_HEIGHT/lcd_height-0.5;
+		zoom_y_tab[i] = i*NES_DISP_HEIGHT/lcd_height;
 	}
 	return 1;
 }
@@ -235,6 +290,10 @@ int main( int argc, char **argv )
 
 	/* Initialize thread state */
 	bThread = FALSE;
+	
+	#define PLAY_BUF_SIZE (1024)
+	unsigned char buf[PLAY_BUF_SIZE];
+	int i;
 
 	/* If a rom name specified, start it */
 	if ( argc == 2 )
@@ -247,6 +306,12 @@ int main( int argc, char **argv )
 	//初始化 zoom 缩放表
 	make_zoom_tab();
 	
+	//判断是否初始化成功
+	if(! playback_handle)
+	{
+		return 0;
+	}
+	
 	//主循环中处理输入事件
 	while(1)
 	{	
@@ -254,6 +319,16 @@ int main( int argc, char **argv )
 		{
 			dwKeyPad1 = read(joypad_fd, 0, 0);
 		}
+		//如果数据够播放 PLAY_BUF_SIZE 在播放
+		if((sound_pos_w - sound_pos_r) >= PLAY_BUF_SIZE)
+		{
+			for(i=0; i<PLAY_BUF_SIZE; i++)
+			{
+				sound_cache_get(&buf[i]); 
+			}	
+		}
+		snd_pcm_prepare(playback_handle);
+		snd_pcm_writei(playback_handle, buf, PLAY_BUF_SIZE/4);
 	}
 	return(0);
 }
@@ -666,29 +741,22 @@ void *InfoNES_MemorySet( void *dest, int c, int count )
 /*===================================================================*/
 void InfoNES_LoadFrame()
 {
-	#if 0
 	int x,y;
+	int line_width;
 	WORD wColor;
-	for (y = 0; y < NES_DISP_HEIGHT; y++ )
+	//修正 即便没有 LCD 也可以出声
+	if(0 < fb_fd)
 	{
-		for (x = 0; x < NES_DISP_WIDTH; x++ )
+		for (y = 0; y < lcd_height; y++ )
 		{
-			wColor = WorkFrame[y * NES_DISP_WIDTH  + x ];
-			lcd_fb_display_px(wColor, x, y);
+			line_width = zoom_y_tab[y] * NES_DISP_WIDTH;
+			for (x = 0; x < lcd_width; x++ )
+			{
+				wColor = WorkFrame[line_width  + zoom_x_tab[x]];
+				lcd_fb_display_px(wColor, x, y);
+			}
 		}
 	}
-	#else
-	int x,y;
-	WORD wColor;
-	for (y = 0; y < lcd_height; y++ )
-	{
-		for (x = 0; x < lcd_width; x++ )
-		{
-			wColor = WorkFrame[zoom_y_tab[y] * NES_DISP_WIDTH  + zoom_x_tab[x]];
-			lcd_fb_display_px(wColor, x, y);
-		}
-	}
-	#endif
 }
 
 
@@ -730,7 +798,7 @@ void InfoNES_PadState( DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem )
 /*===================================================================*/
 void InfoNES_SoundInit( void )
 {
-	sound_fd = 0;
+	
 }
 
 
@@ -741,6 +809,67 @@ void InfoNES_SoundInit( void )
 /*===================================================================*/
 int InfoNES_SoundOpen( int samples_per_sync, int sample_rate )
 {
+	//sample_rate 采样率 44100
+	//samples_per_sync  735
+	unsigned int rate      = sample_rate;
+	sounc_samples_per_sync = samples_per_sync;
+	snd_pcm_hw_params_t *hw_params;
+	rate = 8000;
+	//rate = 16000;
+	if (0 > snd_pcm_open (&playback_handle, "default", SND_PCM_STREAM_PLAYBACK, 0)) 
+	{
+		printf("snd_pcm_open err\n");
+		return -1;
+	}
+	
+	if(0 > snd_pcm_hw_params_malloc (&hw_params))
+	{
+		printf("snd_pcm_hw_params_malloc err\n");
+		return -1;
+	}
+	
+	if(0 > snd_pcm_hw_params_any (playback_handle, hw_params))
+	{
+		printf("snd_pcm_hw_params_any err\n");
+		return -1;
+	}
+	if (0 > snd_pcm_hw_params_set_access (playback_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) 
+	{
+		printf("snd_pcm_hw_params_any err\n");
+		return -1;
+	}
+
+	if (0 > snd_pcm_hw_params_set_format (playback_handle, hw_params, SND_PCM_FORMAT_S16_LE))
+	{
+		printf("snd_pcm_hw_params_set_format err\n");
+		return -1;
+	}
+
+	if (0 > snd_pcm_hw_params_set_rate_near (playback_handle, hw_params, &rate, 0)) 
+	{
+		printf("snd_pcm_hw_params_set_rate_near err\n");
+		return -1;
+	}
+
+	if (0 > snd_pcm_hw_params_set_channels (playback_handle, hw_params, 1))
+	{
+		printf("snd_pcm_hw_params_set_channels err\n");
+		return -1;
+	}
+
+	if (0 > snd_pcm_hw_params (playback_handle, hw_params)) 
+	{
+		printf("snd_pcm_hw_params err\n");
+		return -1;
+	}
+	
+	snd_pcm_hw_params_free (hw_params);
+	
+	if (0 > snd_pcm_prepare (playback_handle)) 
+	{
+		printf("snd_pcm_prepare err\n");
+		return -1;
+	}
 	return 1;
 }
 
@@ -752,10 +881,7 @@ int InfoNES_SoundOpen( int samples_per_sync, int sample_rate )
 /*===================================================================*/
 void InfoNES_SoundClose( void )
 {
-	if ( sound_fd )
-	{
-		close( sound_fd );
-	}
+	snd_pcm_close(playback_handle);
 }
 
 
@@ -766,7 +892,12 @@ void InfoNES_SoundClose( void )
 /*===================================================================*/
 void InfoNES_SoundOutput( int samples, BYTE *wave1, BYTE *wave2, BYTE *wave3, BYTE *wave4, BYTE *wave5 )
 {
-	
+	int i;
+	for (i=0; i <samples; i++)
+	{
+		sound_cache_put((unsigned char)(wave1[i] + wave2[i] + wave3[i] + wave4[i] + wave5[i]) / 5);
+	}
+	return ;
 }
 
 
