@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <crtdbg.h>
 #include <stdarg.h>
-
 #include "../InfoNES.h"
 #include "../InfoNES_System.h"
 #include "InfoNES_Resource_Win.h"
@@ -1156,21 +1155,22 @@ void InfoNES_SoundClose( void )
 /*===================================================================*/
 void InfoNES_SoundOutput( int samples, BYTE *wave1, BYTE *wave2, BYTE *wave3, BYTE *wave4, BYTE *wave5 ) 
 {
-  BYTE wave[ rec_freq ];
-  
-  for ( int i = 0; i < rec_freq; i++)
-  {
-    wave[i] = ( wave1[i] + wave2[i] + wave3[i] + wave4[i] + wave5[i] ) / 5;
-  }
+	//rec_freq = 735
+	BYTE wave[ rec_freq ];
+	//取了 wave1~5 的平均值
+	for ( int i = 0; i < rec_freq; i++)
+	{
+		wave[i] = ( wave1[i] + wave2[i] + wave3[i] + wave4[i] + wave5[i] ) / 5;
+	}
 #if 1
-  if (!lpSndDevice->SoundOutput( samples, wave ) )
+	if (!lpSndDevice->SoundOutput( samples, wave ) )
 #else
-  if (!lpSndDevice->SoundOutput( samples, wave3 ) )
+	if (!lpSndDevice->SoundOutput( samples, wave3 ) )
 #endif
-  {
-    InfoNES_MessageBox( "SoundOutput() Failed." );
-    exit(0);
-  }
+	{
+		InfoNES_MessageBox( "SoundOutput() Failed." );
+		exit(0);
+	}
 }
 
 /*===================================================================*/
