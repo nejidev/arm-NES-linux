@@ -62,13 +62,16 @@ static int *zoom_x_tab;
 static int *zoom_y_tab;
 
 //声卡环形缓冲区 2M 大小 应该足够了
-#define SOUND_BUF_SIZE (1024*1024*16) // 16K
+#define SOUND_BUF_SIZE (1024*1024*2) //2M
 static int sound_buf_size  = SOUND_BUF_SIZE;
 static int sound_pos_w = 0;
 static int sound_pos_r = 0;
 static unsigned char sound_buf[SOUND_BUF_SIZE];
 static int sounc_samples_per_sync;
 
+#define PLAY_BUF_SIZE (4096)
+static unsigned char play_buf[PLAY_BUF_SIZE];
+	
 //缓存是否为空
 static int sound_cache_is_empty()
 {
@@ -291,8 +294,6 @@ int main( int argc, char **argv )
 	/* Initialize thread state */
 	bThread = FALSE;
 	
-	#define PLAY_BUF_SIZE (1024)
-	unsigned char buf[PLAY_BUF_SIZE];
 	int i;
 
 	/* If a rom name specified, start it */
@@ -306,29 +307,29 @@ int main( int argc, char **argv )
 	//初始化 zoom 缩放表
 	make_zoom_tab();
 	
-	//判断是否初始化成功
-	if(! playback_handle)
-	{
-		return 0;
-	}
-	
-	//主循环中处理输入事件
+	//主循环中处理输入事件 声音播放
 	while(1)
 	{	
 		if(0 < joypad_fd)
 		{
 			dwKeyPad1 = read(joypad_fd, 0, 0);
 		}
-		//如果数据够播放 PLAY_BUF_SIZE 在播放
-		if((sound_pos_w - sound_pos_r) >= PLAY_BUF_SIZE)
+		//如果 alsa 初始化成功就播放
+		if(playback_handle)
 		{
-			for(i=0; i<PLAY_BUF_SIZE; i++)
+			//如果数据够播放 PLAY_BUF_SIZE 在播放
+			if((sound_pos_w - sound_pos_r) >= PLAY_BUF_SIZE)
 			{
-				sound_cache_get(&buf[i]); 
-			}	
+				for(i=0; i<PLAY_BUF_SIZE; i++)
+				{
+					sound_cache_get(&play_buf[i]); 
+				}
+			}
+			//不必每次都调用
+			//snd_pcm_prepare(playback_handle);
+			//16位 双声道
+			snd_pcm_writei(playback_handle, play_buf, PLAY_BUF_SIZE/4);
 		}
-		snd_pcm_prepare(playback_handle);
-		snd_pcm_writei(playback_handle, buf, PLAY_BUF_SIZE/4);
 	}
 	return(0);
 }
@@ -814,8 +815,7 @@ int InfoNES_SoundOpen( int samples_per_sync, int sample_rate )
 	unsigned int rate      = sample_rate;
 	sounc_samples_per_sync = samples_per_sync;
 	snd_pcm_hw_params_t *hw_params;
-	rate = 8000;
-	//rate = 16000;
+	
 	if (0 > snd_pcm_open (&playback_handle, "default", SND_PCM_STREAM_PLAYBACK, 0)) 
 	{
 		printf("snd_pcm_open err\n");
@@ -839,6 +839,7 @@ int InfoNES_SoundOpen( int samples_per_sync, int sample_rate )
 		return -1;
 	}
 
+	//16bit PCM 数据
 	if (0 > snd_pcm_hw_params_set_format (playback_handle, hw_params, SND_PCM_FORMAT_S16_LE))
 	{
 		printf("snd_pcm_hw_params_set_format err\n");
@@ -851,7 +852,8 @@ int InfoNES_SoundOpen( int samples_per_sync, int sample_rate )
 		return -1;
 	}
 
-	if (0 > snd_pcm_hw_params_set_channels (playback_handle, hw_params, 1))
+	//双声道 立体声
+	if (0 > snd_pcm_hw_params_set_channels (playback_handle, hw_params, 2))
 	{
 		printf("snd_pcm_hw_params_set_channels err\n");
 		return -1;
@@ -893,9 +895,15 @@ void InfoNES_SoundClose( void )
 void InfoNES_SoundOutput( int samples, BYTE *wave1, BYTE *wave2, BYTE *wave3, BYTE *wave4, BYTE *wave5 )
 {
 	int i;
+	unsigned char wav;
 	for (i=0; i <samples; i++)
 	{
-		sound_cache_put((unsigned char)(wave1[i] + wave2[i] + wave3[i] + wave4[i] + wave5[i]) / 5);
+		wav = (wave1[i] + wave2[i] + wave3[i] + wave4[i] + wave5[i]) / 5;
+		//双声道 16位数据 所以要写4次
+		sound_cache_put(0); 
+		sound_cache_put(wav); 
+		sound_cache_put(0); 
+		sound_cache_put(wav); 
 	}
 	return ;
 }
