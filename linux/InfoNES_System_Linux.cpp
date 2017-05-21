@@ -84,6 +84,27 @@ static int sound_cache_is_full()
 	return ((sound_pos_w + 1)% SOUND_BUF_SIZE) == sound_pos_r;
 }
 
+//比较写读位置相差值
+static int sound_abs_pos()
+{
+	//如果写的位置 比 读的位置 大 : 还没有回环
+	if(sound_pos_w >= sound_pos_r)
+	{
+		if((sound_pos_w - sound_pos_r) > PLAY_BUF_SIZE)
+		{
+			return 1;
+		}
+	}
+	else //已回环 sound_pos_w 已复位为 0
+	{
+		if((SOUND_BUF_SIZE - sound_pos_r + sound_pos_w) > PLAY_BUF_SIZE)
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
 //从缓存中取出
 static int sound_cache_get(unsigned char *pcVal)
 {
@@ -318,7 +339,7 @@ int main( int argc, char **argv )
 		if(playback_handle)
 		{
 			//如果数据够播放 PLAY_BUF_SIZE 在播放
-			if((sound_pos_w - sound_pos_r) >= PLAY_BUF_SIZE)
+			if(sound_abs_pos())
 			{
 				for(i=0; i<PLAY_BUF_SIZE; i++)
 				{
