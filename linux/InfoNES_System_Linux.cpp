@@ -69,8 +69,11 @@ static int sound_pos_r = 0;
 static unsigned char sound_buf[SOUND_BUF_SIZE];
 static int sounc_samples_per_sync;
 
-#define PLAY_BUF_SIZE (4096)
+#define PLAY_BUF_SIZE (1024*2)
 static unsigned char play_buf[PLAY_BUF_SIZE];
+
+//播放声音线程
+pthread_t sound_tid;
 	
 //缓存是否为空
 static int sound_cache_is_empty()
@@ -335,22 +338,8 @@ int main( int argc, char **argv )
 		{
 			dwKeyPad1 = read(joypad_fd, 0, 0);
 		}
-		//如果 alsa 初始化成功就播放
-		if(playback_handle)
-		{
-			//如果数据够播放 PLAY_BUF_SIZE 在播放
-			if(sound_abs_pos())
-			{
-				for(i=0; i<PLAY_BUF_SIZE; i++)
-				{
-					sound_cache_get(&play_buf[i]); 
-				}
-			}
-			//不必每次都调用
-			//snd_pcm_prepare(playback_handle);
-			//16位 双声道
-			snd_pcm_writei(playback_handle, play_buf, PLAY_BUF_SIZE/4);
-		}
+		//主线程休息一下 让子线程用一下 CPU
+		usleep(300);
 	}
 	return(0);
 }
@@ -367,6 +356,29 @@ void *emulation_thread( void *args )
 	InfoNES_Main();
 }
 
+void *sound_thread(void *args)
+{
+	int i;
+	//如果 alsa 初始化成功就播放
+	if(playback_handle)
+	{
+		while(1)
+		{
+			//如果数据够播放 PLAY_BUF_SIZE 在播放
+			if(sound_abs_pos())
+			{
+				for(i=0; i<PLAY_BUF_SIZE; i++)
+				{
+					sound_cache_get(&play_buf[i]); 
+				}
+			}
+			//如果 不每次都调用 大概 过5分钟后声音会变小
+			snd_pcm_prepare(playback_handle);
+			//16位 双声道
+			snd_pcm_writei(playback_handle, play_buf, PLAY_BUF_SIZE/4);
+		}
+	}
+}
 
 /*===================================================================*/
 /*                                                                   */
@@ -387,6 +399,8 @@ void start_application( char *filename )
 		/* Create Emulation Thread */
 		bThread = TRUE;
 		pthread_create( &emulation_tid, NULL, emulation_thread, NULL );
+		//创建一个播放声音的线程
+		pthread_create( &sound_tid, NULL, sound_thread, NULL );
 	}
 }
 
