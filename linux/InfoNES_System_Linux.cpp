@@ -43,11 +43,7 @@
 
 #include <fcntl.h>
 
-#define JOYPAD_DEV "/dev/joypad"
-
 static snd_pcm_t *playback_handle;
-
-static int joypad_fd;
 
 static int fb_fd;
 static unsigned char *fb_mem;
@@ -74,7 +70,10 @@ static unsigned char play_buf[PLAY_BUF_SIZE];
 
 //播放声音线程
 pthread_t sound_tid;
-	
+
+extern int InitJoypadInput(void);
+extern int GetJoypadInput(void);
+
 //缓存是否为空
 static int sound_cache_is_empty()
 {
@@ -136,17 +135,6 @@ static int sound_cache_put(unsigned char val)
 	if(SOUND_BUF_SIZE == sound_pos_w)
 	{
 		sound_pos_w = 0;
-	}
-	return 0;
-}
-
-static int init_joypad()
-{
-	joypad_fd = open(JOYPAD_DEV, O_RDONLY);
-	if(-1 == joypad_fd)
-	{
-		printf("joypad dev not found \r\n");
-		return -1;
 	}
 	return 0;
 }
@@ -319,6 +307,8 @@ int main( int argc, char **argv )
 	bThread = FALSE;
 	
 	int i;
+	
+	InitJoypadInput();
 
 	/* If a rom name specified, start it */
 	if ( argc == 2 )
@@ -327,17 +317,14 @@ int main( int argc, char **argv )
 	}
 	
 	lcd_fb_init();
-	init_joypad();
+
 	//初始化 zoom 缩放表
 	make_zoom_tab();
 	
 	//主循环中处理输入事件 声音播放
 	while(1)
-	{	
-		if(0 < joypad_fd)
-		{
-			dwKeyPad1 = read(joypad_fd, 0, 0);
-		}
+	{
+		dwKeyPad1 = GetJoypadInput();
 		//主线程休息一下 让子线程用一下 CPU
 		usleep(300);
 	}
@@ -823,7 +810,8 @@ void InfoNES_PadState( DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem )
 	*pdwPad2	= dwKeyPad2;
 	*pdwSystem	= dwKeySystem;
 	
-	dwKeyPad1 = 0;
+	//取消重置手柄 在 输入函数中自行处理
+	//dwKeyPad1 = 0;
 }
 
 

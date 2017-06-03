@@ -6,7 +6,7 @@ TARBALL = InfoNES08J
 		./../InfoNES.cpp \
 		./../InfoNES_Mapper.cpp \
 		./../InfoNES_pAPU.cpp \
-		./InfoNES_System_Linux.cpp
+		./InfoNES_System_Linux.cpp joypad_input.cpp
 
 .OFILES	=	$(.CFILES:.cpp=.o)
 
