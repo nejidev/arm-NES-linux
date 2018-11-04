@@ -30,7 +30,7 @@
 #define TRUE 1
 #define FALSE 0
 
-/* lcd ²Ù×÷Ïà¹Ø Í·ÎÄ¼ş */
+/* lcd æ“ä½œç›¸å…³ å¤´æ–‡ä»¶ */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -57,87 +57,8 @@ static struct fb_var_screeninfo var;
 static int *zoom_x_tab;
 static int *zoom_y_tab;
 
-//Éù¿¨»·ĞÎ»º³åÇø 2M ´óĞ¡ Ó¦¸Ã×ã¹»ÁË
-#define SOUND_BUF_SIZE (1024*1024*2) //2M
-static int sound_buf_size  = SOUND_BUF_SIZE;
-static int sound_pos_w = 0;
-static int sound_pos_r = 0;
-static unsigned char sound_buf[SOUND_BUF_SIZE];
-static int sounc_samples_per_sync;
-
-#define PLAY_BUF_SIZE (1024*2)
-static unsigned char play_buf[PLAY_BUF_SIZE];
-
-//²¥·ÅÉùÒôÏß³Ì
-pthread_t sound_tid;
-
 extern int InitJoypadInput(void);
 extern int GetJoypadInput(void);
-
-//»º´æÊÇ·ñÎª¿Õ
-static int sound_cache_is_empty()
-{
-	return (sound_pos_w == sound_pos_r);
-}
-
-//»º´æÊÇ·ñÒÑÂú
-static int sound_cache_is_full()
-{
-	return ((sound_pos_w + 1)% SOUND_BUF_SIZE) == sound_pos_r;
-}
-
-//±È½ÏĞ´¶ÁÎ»ÖÃÏà²îÖµ
-static int sound_abs_pos()
-{
-	//Èç¹ûĞ´µÄÎ»ÖÃ ±È ¶ÁµÄÎ»ÖÃ ´ó : »¹Ã»ÓĞ»Ø»·
-	if(sound_pos_w >= sound_pos_r)
-	{
-		if((sound_pos_w - sound_pos_r) > PLAY_BUF_SIZE)
-		{
-			return 1;
-		}
-	}
-	else //ÒÑ»Ø»· sound_pos_w ÒÑ¸´Î»Îª 0
-	{
-		if((SOUND_BUF_SIZE - sound_pos_r + sound_pos_w) > PLAY_BUF_SIZE)
-		{
-			return 1;
-		}
-	}
-	return 0;
-}
-
-//´Ó»º´æÖĞÈ¡³ö
-static int sound_cache_get(unsigned char *pcVal)
-{
-	if(sound_cache_is_empty())
-	{
-		return -1;
-	}
-	*pcVal = sound_buf[sound_pos_r];
-	sound_pos_r++;
-	if(SOUND_BUF_SIZE == sound_pos_r)
-	{
-		sound_pos_r = 0;
-	}
-	return 0;
-}
-
-//Ğ´Èë»º´æ
-static int sound_cache_put(unsigned char val)
-{
-	if(sound_cache_is_full())
-	{
-		return -1;
-	}
-	sound_buf[sound_pos_w] = val;
-	sound_pos_w++;
-	if(SOUND_BUF_SIZE == sound_pos_w)
-	{
-		sound_pos_w = 0;
-	}
-	return 0;
-}
 
 static int lcd_fb_display_px(WORD color, int x, int y)
 {
@@ -152,14 +73,14 @@ static int lcd_fb_display_px(WORD color, int x, int y)
 
 static int lcd_fb_init()
 {
-	//Èç¹ûÊ¹ÓÃ mmap ´ò¿ª·½Ê½ ±ØĞëÊÇ ¶Á¶¨·½Ê½
+	//å¦‚æœä½¿ç”¨ mmap æ‰“å¼€æ–¹å¼ å¿…é¡»æ˜¯ è¯»å®šæ–¹å¼
 	fb_fd = open("/dev/fb0", O_RDWR);
 	if(-1 == fb_fd)
 	{
 		printf("cat't open /dev/fb0 \n");
 		return -1;
 	}
-	//»ñÈ¡ÆÁÄ»²ÎÊı
+	//è·å–å±å¹•å‚æ•°
 	if(-1 == ioctl(fb_fd, FBIOGET_VSCREENINFO, &var))
 	{
 		close(fb_fd);
@@ -167,7 +88,7 @@ static int lcd_fb_init()
 		return -1;
 	}
 	
-	//¼ÆËã²ÎÊı
+	//è®¡ç®—å‚æ•°
 	px_width     = var.bits_per_pixel / 8;
 	line_width   = var.xres * px_width;
 	screen_width = var.yres * line_width;
@@ -181,13 +102,13 @@ static int lcd_fb_init()
 		printf("cat't mmap /dev/fb0 \n");
 		return -1;
 	}
-	//ÇåÆÁ
+	//æ¸…å±
 	memset(fb_mem, 0 , screen_width);
 	return 0;
 }
 
 /**
- * Éú³Ézoom Ëõ·Å±í
+ * ç”Ÿæˆzoom ç¼©æ”¾è¡¨
  */
 int make_zoom_tab()
 {
@@ -318,14 +239,14 @@ int main( int argc, char **argv )
 	
 	lcd_fb_init();
 
-	//³õÊ¼»¯ zoom Ëõ·Å±í
+	//åˆå§‹åŒ– zoom ç¼©æ”¾è¡¨
 	make_zoom_tab();
 	
-	//Ö÷Ñ­»·ÖĞ´¦ÀíÊäÈëÊÂ¼ş ÉùÒô²¥·Å
+	//ä¸»å¾ªç¯ä¸­å¤„ç†è¾“å…¥äº‹ä»¶ å£°éŸ³æ’­æ”¾
 	while(1)
 	{
 		dwKeyPad1 = GetJoypadInput();
-		//Ö÷Ïß³ÌĞİÏ¢Ò»ÏÂ ÈÃ×ÓÏß³ÌÓÃÒ»ÏÂ CPU
+		//ä¸»çº¿ç¨‹ä¼‘æ¯ä¸€ä¸‹ è®©å­çº¿ç¨‹ç”¨ä¸€ä¸‹ CPU
 		usleep(300);
 	}
 	return(0);
@@ -341,30 +262,6 @@ int main( int argc, char **argv )
 void *emulation_thread( void *args )
 {
 	InfoNES_Main();
-}
-
-void *sound_thread(void *args)
-{
-	int i;
-	//Èç¹û alsa ³õÊ¼»¯³É¹¦¾Í²¥·Å
-	if(playback_handle)
-	{
-		while(1)
-		{
-			//Èç¹ûÊı¾İ¹»²¥·Å PLAY_BUF_SIZE ÔÚ²¥·Å
-			if(sound_abs_pos())
-			{
-				for(i=0; i<PLAY_BUF_SIZE; i++)
-				{
-					sound_cache_get(&play_buf[i]); 
-				}
-			}
-			//Èç¹û ²»Ã¿´Î¶¼µ÷ÓÃ ´ó¸Å ¹ı5·ÖÖÓºóÉùÒô»á±äĞ¡
-			snd_pcm_prepare(playback_handle);
-			//16Î» Ë«ÉùµÀ
-			snd_pcm_writei(playback_handle, play_buf, PLAY_BUF_SIZE/4);
-		}
-	}
 }
 
 /*===================================================================*/
@@ -386,8 +283,6 @@ void start_application( char *filename )
 		/* Create Emulation Thread */
 		bThread = TRUE;
 		pthread_create( &emulation_tid, NULL, emulation_thread, NULL );
-		//´´½¨Ò»¸ö²¥·ÅÉùÒôµÄÏß³Ì
-		pthread_create( &sound_tid, NULL, sound_thread, NULL );
 	}
 }
 
@@ -767,7 +662,7 @@ void InfoNES_LoadFrame()
 	int x,y;
 	int line_width;
 	WORD wColor;
-	//ĞŞÕı ¼´±ãÃ»ÓĞ LCD Ò²¿ÉÒÔ³öÉù
+	//ä¿®æ­£ å³ä¾¿æ²¡æœ‰ LCD ä¹Ÿå¯ä»¥å‡ºå£°
 	if(0 < fb_fd)
 	{
 		for (y = 0; y < lcd_height; y++ )
@@ -810,7 +705,7 @@ void InfoNES_PadState( DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem )
 	*pdwPad2	= dwKeyPad2;
 	*pdwSystem	= dwKeySystem;
 	
-	//È¡ÏûÖØÖÃÊÖ±ú ÔÚ ÊäÈëº¯ÊıÖĞ×ÔĞĞ´¦Àí
+	//å–æ¶ˆé‡ç½®æ‰‹æŸ„ åœ¨ è¾“å…¥å‡½æ•°ä¸­è‡ªè¡Œå¤„ç†
 	//dwKeyPad1 = 0;
 }
 
@@ -833,64 +728,63 @@ void InfoNES_SoundInit( void )
 /*===================================================================*/
 int InfoNES_SoundOpen( int samples_per_sync, int sample_rate )
 {
-	//sample_rate ²ÉÑùÂÊ 44100
+	//sample_rate é‡‡æ ·ç‡ 44100
 	//samples_per_sync  735
 	unsigned int rate      = sample_rate;
-	sounc_samples_per_sync = samples_per_sync;
 	snd_pcm_hw_params_t *hw_params;
 	
-	if (0 > snd_pcm_open (&playback_handle, "default", SND_PCM_STREAM_PLAYBACK, 0)) 
+	if(0 > snd_pcm_open(&playback_handle, "default", SND_PCM_STREAM_PLAYBACK, 0)) 
 	{
 		printf("snd_pcm_open err\n");
 		return -1;
 	}
 	
-	if(0 > snd_pcm_hw_params_malloc (&hw_params))
+	if(0 > snd_pcm_hw_params_malloc(&hw_params))
 	{
 		printf("snd_pcm_hw_params_malloc err\n");
 		return -1;
 	}
 	
-	if(0 > snd_pcm_hw_params_any (playback_handle, hw_params))
+	if(0 > snd_pcm_hw_params_any(playback_handle, hw_params))
 	{
 		printf("snd_pcm_hw_params_any err\n");
 		return -1;
 	}
-	if (0 > snd_pcm_hw_params_set_access (playback_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) 
+	if(0 > snd_pcm_hw_params_set_access(playback_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) 
 	{
 		printf("snd_pcm_hw_params_any err\n");
 		return -1;
 	}
 
-	//16bit PCM Êı¾İ
-	if (0 > snd_pcm_hw_params_set_format (playback_handle, hw_params, SND_PCM_FORMAT_S16_LE))
+	//16bit PCM æ•°æ®
+	if(0 > snd_pcm_hw_params_set_format(playback_handle, hw_params, SND_PCM_FORMAT_U8))
 	{
 		printf("snd_pcm_hw_params_set_format err\n");
 		return -1;
 	}
 
-	if (0 > snd_pcm_hw_params_set_rate_near (playback_handle, hw_params, &rate, 0)) 
+	if(0 > snd_pcm_hw_params_set_rate_near(playback_handle, hw_params, &rate, 0)) 
 	{
 		printf("snd_pcm_hw_params_set_rate_near err\n");
 		return -1;
 	}
 
-	//Ë«ÉùµÀ Á¢ÌåÉù
-	if (0 > snd_pcm_hw_params_set_channels (playback_handle, hw_params, 2))
+	//å•å£°é“ éç«‹ä½“å£°
+	if(0 > snd_pcm_hw_params_set_channels(playback_handle, hw_params, 1))
 	{
 		printf("snd_pcm_hw_params_set_channels err\n");
 		return -1;
 	}
 
-	if (0 > snd_pcm_hw_params (playback_handle, hw_params)) 
+	if(0 > snd_pcm_hw_params(playback_handle, hw_params)) 
 	{
 		printf("snd_pcm_hw_params err\n");
 		return -1;
 	}
 	
-	snd_pcm_hw_params_free (hw_params);
+	snd_pcm_hw_params_free(hw_params);
 	
-	if (0 > snd_pcm_prepare (playback_handle)) 
+	if(0 > snd_pcm_prepare(playback_handle)) 
 	{
 		printf("snd_pcm_prepare err\n");
 		return -1;
@@ -919,15 +813,16 @@ void InfoNES_SoundOutput( int samples, BYTE *wave1, BYTE *wave2, BYTE *wave3, BY
 {
 	int i;
 	unsigned char wav;
+	unsigned char *pcmBuf = (unsigned char *)malloc(samples);
+
 	for (i=0; i <samples; i++)
 	{
 		wav = (wave1[i] + wave2[i] + wave3[i] + wave4[i] + wave5[i]) / 5;
-		//Ë«ÉùµÀ 16Î»Êı¾İ ËùÒÔÒªĞ´4´Î
-		sound_cache_put(0); 
-		sound_cache_put(wav); 
-		sound_cache_put(0); 
-		sound_cache_put(wav); 
+		//å•å£°é“ 8ä½æ•°æ®
+		pcmBuf[i] = wav;
 	}
+	snd_pcm_writei(playback_handle, pcmBuf, samples);
+	free(pcmBuf);
 	return ;
 }
 
