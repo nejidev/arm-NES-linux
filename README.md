@@ -3,16 +3,16 @@
 	Raspberry Pi or Arm linux or ubuntu
 	Direct draw /dev/fb0 Framebuffer
 
-##Build
+## Build
 	cd arm-NES-linux-/linux/
 	make
 
-##Build joypad linux kernel module
+## Build joypad linux kernel module
 	cd arm-NES-linux-/joypad/
 	make
 
 
-##USE
+## USE
 	insmod joypad.ko
 	cd arm-NES-linux-/linux/
 	./InfoNES SuperMario.nes
