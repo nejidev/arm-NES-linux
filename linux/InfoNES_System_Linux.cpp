@@ -45,7 +45,7 @@
 
 static snd_pcm_t *playback_handle;
 
-static int fb_fd;
+static int fb_fd = -1;
 static unsigned char *fb_mem;
 static int px_width;
 static int line_width;
@@ -95,6 +95,8 @@ static int lcd_fb_init()
 	lcd_width    = var.xres;
 	lcd_height   = var.yres;
 	
+	printf("fb width:%d height:%d \n", lcd_width, lcd_height);
+
 	fb_mem = (unsigned char *)mmap(NULL, screen_width, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, 0);
 	if(fb_mem == (void *)-1)
 	{
@@ -114,6 +116,7 @@ int make_zoom_tab()
 {
 	int i;
 	zoom_x_tab = (int *)malloc(sizeof(int) * lcd_width);
+
 	if(NULL == zoom_x_tab)
 	{
 		printf("make zoom_x_tab error\n");
@@ -231,16 +234,16 @@ int main( int argc, char **argv )
 	
 	InitJoypadInput();
 
+	lcd_fb_init();
+
+	//初始化 zoom 缩放表
+	make_zoom_tab();
+
 	/* If a rom name specified, start it */
 	if ( argc == 2 )
 	{
 		start_application( argv[1] );
 	}
-	
-	lcd_fb_init();
-
-	//初始化 zoom 缩放表
-	make_zoom_tab();
 	
 	//主循环中处理输入事件 声音播放
 	while(1)
@@ -662,6 +665,7 @@ void InfoNES_LoadFrame()
 	int x,y;
 	int line_width;
 	WORD wColor;
+
 	//修正 即便没有 LCD 也可以出声
 	if(0 < fb_fd)
 	{
