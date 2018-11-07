@@ -816,6 +816,7 @@ void InfoNES_SoundClose( void )
 void InfoNES_SoundOutput( int samples, BYTE *wave1, BYTE *wave2, BYTE *wave3, BYTE *wave4, BYTE *wave5 )
 {
 	int i;
+	int ret;
 	unsigned char wav;
 	unsigned char *pcmBuf = (unsigned char *)malloc(samples);
 
@@ -825,7 +826,11 @@ void InfoNES_SoundOutput( int samples, BYTE *wave1, BYTE *wave2, BYTE *wave3, BY
 		//单声道 8位数据
 		pcmBuf[i] = wav;
 	}
-	snd_pcm_writei(playback_handle, pcmBuf, samples);
+	ret = snd_pcm_writei(playback_handle, pcmBuf, samples);
+	if(-EPIPE == ret)
+    {
+        snd_pcm_prepare(playback_handle);
+    }
 	free(pcmBuf);
 	return ;
 }
