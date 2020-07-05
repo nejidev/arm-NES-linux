@@ -9,6 +9,10 @@
 #ifndef InfoNES_MAPPER_H_INCLUDED
 #define InfoNES_MAPPER_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*-------------------------------------------------------------------*/
 /*  Include files                                                    */
 /*-------------------------------------------------------------------*/
@@ -632,4 +636,7 @@ void Map255_Write( WORD wAddr, BYTE byData );
 void Map255_Apu( WORD wAddr, BYTE byData );
 BYTE Map255_ReadApu( WORD wAddr );
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* !InfoNES_MAPPER_H_INCLUDED */

@@ -9,6 +9,10 @@
 #ifndef InfoNES_H_INCLUDED
 #define InfoNES_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*-------------------------------------------------------------------*/
 /*  Include files                                                    */
 /*-------------------------------------------------------------------*/
@@ -318,5 +322,9 @@ void InfoNES_GetSprHitY();
 
 /* Develop character data */
 void InfoNES_SetupChr();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !InfoNES_H_INCLUDED */

@@ -10,6 +10,10 @@
 #ifndef K6502_RW_H_INCLUDED
 #define K6502_RW_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*-------------------------------------------------------------------*/
 /*  Include files                                                    */
 /*-------------------------------------------------------------------*/
@@ -481,5 +485,9 @@ static inline WORD K6502_ReadW2( WORD wAddr )
     return K6502_Read( wAddr ) | (WORD)K6502_Read( wAddr + 1 ) << 8;
   }
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !K6502_RW_H_INCLUDED */

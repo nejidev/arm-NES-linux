@@ -9,6 +9,10 @@
 #ifndef InfoNES_PAPU_H_INCLUDED
 #define InfoNES_PAPU_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*-------------------------------------------------------------------*/
 /*  Macros                                                           */
 /*-------------------------------------------------------------------*/
@@ -192,6 +196,10 @@ extern DWORD ApuC3Llc;                             /* Linear Length Counter */
 /*-------------------------------------------------------------------*/
 
 extern BYTE  ApuC4Atl;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* InfoNES_PAPU_H_INCLUDED */
 

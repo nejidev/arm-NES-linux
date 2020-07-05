@@ -9,6 +9,10 @@
 #ifndef K6502_H_INCLUDED
 #define K6502_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Type definition
 #ifndef DWORD
 typedef unsigned long  DWORD;
@@ -77,5 +81,9 @@ extern BYTE NMI_State;
 
 // The number of the clocks that it passed
 extern WORD g_wPassedClocks;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !K6502_H_INCLUDED */
