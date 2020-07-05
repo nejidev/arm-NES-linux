@@ -36,7 +36,15 @@
     <addaction name="actionOpen"/>
     <addaction name="actionExit"/>
    </widget>
+   <widget class="QMenu" name="menuSeting">
+    <property name="title">
+     <string>Seting</string>
+    </property>
+    <addaction name="actionTrueColour"/>
+    <addaction name="actionGray"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuSeting"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen">
@@ -47,6 +55,25 @@
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionTrueColour">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>True colour</string>
+   </property>
+  </action>
+  <action name="actionGray">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Gray</string>
    </property>
   </action>
  </widget>

@@ -22,6 +22,10 @@ private slots:
 
     void on_actionExit_triggered();
 
+    void on_actionTrueColour_triggered();
+
+    void on_actionGray_triggered();
+
 public:
     Ui::NesEmulateWindow *ui;
     NesThread *nesThread;

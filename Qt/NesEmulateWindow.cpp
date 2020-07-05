@@ -79,6 +79,18 @@ void NesEmulateWindow::on_actionExit_triggered()
     exit(0);
 }
 
+void NesEmulateWindow::on_actionTrueColour_triggered()
+{
+    ui->actionGray->setChecked(false);
+    ui->nesScreenWidget->isGray = false;
+}
+
+void NesEmulateWindow::on_actionGray_triggered()
+{
+    ui->actionTrueColour->setChecked(false);
+    ui->nesScreenWidget->isGray = true;
+}
+
 void *InfoNES_MemoryCopy(void *dest, const void *src, int count)
 {
     return memcpy(dest, src, count);

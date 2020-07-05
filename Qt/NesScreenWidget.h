@@ -20,6 +20,10 @@ public slots:
 private:
     QImage image;
     QMutex mutex;
+    unsigned char *grayFrameBuff;
+
+public:
+    bool isGray;
 
 public:
     NesScreenWidget(QWidget *parent);
