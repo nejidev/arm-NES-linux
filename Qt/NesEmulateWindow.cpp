@@ -37,6 +37,7 @@ static QWidget *applicationQWidget = NULL;
 static unsigned char *pcmBuf = NULL;
 static int pcmBufSize = 0;
 static bool nesThreadRun = false;
+static unsigned int joypad = 0;
 
 NesEmulateWindow::NesEmulateWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -96,6 +97,101 @@ void *InfoNES_MemoryCopy(void *dest, const void *src, int count)
     return memcpy(dest, src, count);
 }
 
+/**
+ * 0  1   2       3       4    5      6     7
+ * A  B   Select  Start  Up   Down   Left  Right
+ */
+void NesEmulateWindow::keyPressEvent(QKeyEvent *event)
+{
+    switch(event->key())
+    {
+        case Qt::Key_Space://space : A
+        {
+            joypad &= ~(1);
+            joypad |= 1;
+        }break;
+        case Qt::Key_B://B : B
+        {
+            joypad &= ~(1<<1);
+            joypad |= 1<<1;
+        }break;
+        case Qt::Key_1://1 : Select
+        {
+            joypad &= ~(1<<2);
+            joypad |= 1<<2;
+        }break;
+        case Qt::Key_2://2 : Start
+        {
+            joypad &= ~(1<<3);
+            joypad |= 1<<3;
+        }break;
+        case Qt::Key_Up://Up : up
+        {
+            joypad &= ~(1<<4);
+            joypad |= 1<<4;
+        }break;
+        case Qt::Key_Down://Down : Down
+        {
+            joypad &= ~(1<<5);
+            joypad |= 1<<5;
+        }break;
+        case Qt::Key_Left://Left : Left
+        {
+            joypad &= ~(1<<6);
+            joypad |= 1<<6;
+        }break;
+        case Qt::Key_Right://Right : Right
+        {
+            joypad &= ~(1<<7);
+            joypad |= 1<<7;
+        }break;
+        default:break;
+    }
+
+    qDebug()<<"keyPressEvent:"<<joypad;
+}
+
+void NesEmulateWindow::keyReleaseEvent(QKeyEvent *event)
+{
+    switch(event->key())
+    {
+        case Qt::Key_Space://space : A
+        {
+            joypad &= ~(1);
+        }break;
+        case Qt::Key_B://B : B
+        {
+            joypad &= ~(1<<1);
+        }break;
+        case Qt::Key_1://1 : Select
+        {
+            joypad &= ~(1<<2);
+        }break;
+        case Qt::Key_2://2 : Start
+        {
+            joypad &= ~(1<<3);
+        }break;
+        case Qt::Key_Up://Up : up
+        {
+            joypad &= ~(1<<4);
+        }break;
+        case Qt::Key_Down://Down : Down
+        {
+            joypad &= ~(1<<5);
+        }break;
+        case Qt::Key_Left://Left : Left
+        {
+            joypad &= ~(1<<6);
+        }break;
+        case Qt::Key_Right://Right : Right
+        {
+            joypad &= ~(1<<7);
+        }break;
+        default:break;
+    }
+    qDebug()<<"keyReleaseEvent:"<<joypad;
+}
+
 void InfoNES_ReleaseRom()
 {
     if ( ROM )
@@ -124,7 +220,9 @@ void InfoNES_LoadFrame()
 
 void InfoNES_PadState(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem)
 {
-
+    *pdwPad1 = joypad;
+    *pdwPad2 = 0;
+    *pdwSystem = 0;
 }
 
 void InfoNES_MessageBox(char *pszMsg, ...)

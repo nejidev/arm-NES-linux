@@ -36,7 +36,6 @@ void NesScreenWidget::resizeEvent(QResizeEvent *event)
 void NesScreenWidget::paintEvent(QPaintEvent *event)
 {
     QPainter painter;
-    QMutexLocker locker(&mutex);
 
     painter.begin(this);
     painter.drawImage(QPoint(0, 0), image);
@@ -45,6 +44,7 @@ void NesScreenWidget::paintEvent(QPaintEvent *event)
 
 void NesScreenWidget::loadFrame()
 {
+    QMutexLocker locker(&mutex);
     if(isGray)
     {
         //565

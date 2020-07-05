@@ -2,6 +2,7 @@
 #define NESEMULATEWINDOW_H
 
 #include <QMainWindow>
+#include <QKeyEvent>
 
 #include "NesThread.h"
 
@@ -16,6 +17,8 @@ class NesEmulateWindow : public QMainWindow
 public:
     explicit NesEmulateWindow(QWidget *parent = 0);
     ~NesEmulateWindow();
+    void keyPressEvent(QKeyEvent *event);
+    void keyReleaseEvent(QKeyEvent *event);
 
 private slots:
     void on_actionOpen_triggered();
