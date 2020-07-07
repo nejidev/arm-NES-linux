@@ -92,9 +92,12 @@ void NesEmulateWindow::on_actionGray_triggered()
     ui->nesScreenWidget->isGray = true;
 }
 
-void *InfoNES_MemoryCopy(void *dest, const void *src, int count)
+void NesEmulateWindow::closeEvent(QCloseEvent *event)
 {
-    return memcpy(dest, src, count);
+    nesThreadRun = false;
+
+    nesThread->terminate();
+    nesThread->wait();
 }
 
 /**
@@ -192,6 +195,11 @@ void NesEmulateWindow::keyReleaseEvent(QKeyEvent *event)
     qDebug()<<"keyReleaseEvent:"<<joypad;
 }
 
+void *InfoNES_MemoryCopy(void *dest, const void *src, int count)
+{
+    return memcpy(dest, src, count);
+}
+
 void InfoNES_ReleaseRom()
 {
     if ( ROM )
@@ -225,7 +233,7 @@ void InfoNES_PadState(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem)
     *pdwSystem = 0;
 }
 
-void InfoNES_MessageBox(char *pszMsg, ...)
+void InfoNES_MessageBox(const char *pszMsg, ...)
 {
 
 }
@@ -369,6 +377,9 @@ int InfoNES_SoundOpen(int samples_per_sync, int sample_rate)
 
 void InfoNES_SoundClose()
 {
+    soundDevice->close();
+    delete soundDevice;
+
     soundDevice = NULL;
     if(NULL != pcmBuf)
     {

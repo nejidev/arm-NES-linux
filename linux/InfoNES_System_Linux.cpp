@@ -760,7 +760,7 @@ int InfoNES_SoundOpen( int samples_per_sync, int sample_rate )
 		return -1;
 	}
 
-	//16bit PCM 数据
+	//8bit PCM 数据
 	if(0 > snd_pcm_hw_params_set_format(playback_handle, hw_params, SND_PCM_FORMAT_U8))
 	{
 		printf("snd_pcm_hw_params_set_format err\n");
@@ -851,7 +851,7 @@ void InfoNES_Wait()
 /*            InfoNES_MessageBox() : Print System Message            */
 /*                                                                   */
 /*===================================================================*/
-void InfoNES_MessageBox( char *pszMsg, ... )
+void InfoNES_MessageBox(const char *pszMsg, ... )
 {
 	printf( "MessageBox: %s \n", pszMsg );
 }

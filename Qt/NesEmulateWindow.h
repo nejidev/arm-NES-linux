@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QKeyEvent>
+#include <QCloseEvent>
 
 #include "NesThread.h"
 
@@ -19,6 +20,7 @@ public:
     ~NesEmulateWindow();
     void keyPressEvent(QKeyEvent *event);
     void keyReleaseEvent(QKeyEvent *event);
+    void closeEvent(QCloseEvent *event);
 
 private slots:
     void on_actionOpen_triggered();
